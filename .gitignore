@@ -1,0 +1,17 @@
+# Ignore all build artifacts
+build/
+bin/
+obj/
+
+# Ignore local IDE settings
+.vscode/
+.idea/
+cmake-build-debug/
+
+# Ignore OS-specific binary leftovers
+*.exe
+*.out
+*.app
+*.so
+*.dylib
+*.dll
