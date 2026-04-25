@@ -13,6 +13,8 @@ set(SOURCES
     src/EBO.cpp
     src/VAO.cpp
     src/shaderClass.cpp
+    src/stb.cpp
+    src/texture.cpp
 )
 
 add_executable(MyGame ${SOURCES})
@@ -28,4 +30,8 @@ target_link_libraries(MyGame
 
 # Copy the shaders folder to the build directory so the executable can find it
 file(COPY "${CMAKE_SOURCE_DIR}/resources/shaders" 
+    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
+
+# Copy the textures folder to the build directory so the executable can find it
+file(COPY "${CMAKE_SOURCE_DIR}/resources/textures" 
     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
