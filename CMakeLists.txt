@@ -15,9 +15,12 @@ set(SOURCES
     src/shaderClass.cpp
     src/stb.cpp
     src/texture.cpp
+    src/camera.cpp
 )
 
 add_executable(MyGame ${SOURCES})
+
+target_compile_definitions(MyGame PRIVATE GLM_ENABLE_EXPERIMENTAL)
 
 target_include_directories(MyGame PRIVATE headers external/include)
 
@@ -29,9 +32,16 @@ target_link_libraries(MyGame
 )
 
 # Copy the shaders folder to the build directory so the executable can find it
-file(COPY "${CMAKE_SOURCE_DIR}/resources/shaders" 
-    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
+# file(COPY "${CMAKE_SOURCE_DIR}/resources/shaders" 
+#     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
 
-# Copy the textures folder to the build directory so the executable can find it
-file(COPY "${CMAKE_SOURCE_DIR}/resources/textures" 
-    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
+# # Copy the textures folder to the build directory so the executable can find it
+# file(COPY "${CMAKE_SOURCE_DIR}/resources/textures" 
+#     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/resources")
+
+add_custom_command(TARGET MyGame POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/resources"
+        "${CMAKE_CURRENT_BINARY_DIR}/resources"
+    COMMENT "Syncing resources to build directory..."
+)

@@ -3,27 +3,74 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "shaderClass.h"
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
 #include "texture.h"
+#include "camera.h"
+
+
+
+const unsigned int width = 800;
+const unsigned int height = 800;
+
+
+
 // Vertices coordinates and color information
 GLfloat vertices[] =
-{ //    COORDINATES     /     COLORS
-   -0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f,     0.0f, 0.0f,  // Lower Left Corner
-   -0.5f,  0.5f, 0.0f,    0.0f, 1.0f, 0.0f,     0.0f, 1.0f, // Upper Left corner
-    0.5f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,     1.0f, 1.0f,  // Upper Right corner
-    0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f  // Lower Right corner
+{ //    COORDINATES     /        COLORS        /    TexCoords
+   -0.5f, 0.0f,  0.5f,    0.83f, 0.70f, 0.44f,     0.0f, 0.0f, 
+   -0.5f, 0.0f, -0.5f,    0.83f, 0.70f, 0.44f,     5.0f, 1.0f, 
+    0.5f, 0.0f, -0.5f,    0.83f, 0.70f, 0.44f,     0.0f, 1.0f, 
+    0.5f, 0.0f,  0.5f,    0.83f, 0.70f, 0.44f,     5.0f, 0.0f,
+    0.0f, 0.8f,  0.0f,    0.92f, 0.86f, 0.76f,     2.5f, 5.0f
 };
 
 // Order of vertices that compose each triangle (Indices)
 GLuint indices[] =
 {
-    0, 2, 1, // Upper triangle
-    0, 3, 2  // Lower triangle
+    0, 1, 2,
+    0, 2, 3,
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
+    3, 0, 4
 };
+
+GLfloat lightVertices[] = 
+{
+    //     COORDINATES     //
+    -0.1f, -0.1f,  0.1f,
+    -0.1f, -0.1f, -0.1f,
+     0.1f, -0.1f, -0.1f,
+     0.1f, -0.1f,  0.1f,
+    -0.1f,  0.1f,  0.1f,
+    -0.1f,  0.1f, -0.1f,
+     0.1f,  0.1f, -0.1f,
+     0.1f,  0.1f,  0.1f,
+};
+
+GLuint lightIndices[] =
+{
+    0, 1, 2,
+    0, 2, 3,
+    0, 4, 7,
+    0, 7, 3,
+    3, 7, 6,
+    3, 6, 2,
+    2, 6, 5,
+    2, 5, 1,
+    1, 5, 4,
+    1, 4, 0,
+    4, 5, 6,
+    4, 6, 7
+};
+
 
 int main () {
     glfwInit();
@@ -35,7 +82,7 @@ int main () {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a window object, width x height (?), naming it "MyGame"
-    GLFWwindow* window = glfwCreateWindow(800, 800, "MyGame", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "MyGame", NULL, NULL);
     if (window == NULL)
     {
         // If window initialization failed, terminate and return -1
@@ -49,7 +96,7 @@ int main () {
     // Load GLAD so we can use gl functions
     gladLoadGL();
     // Specify the viewport size
-    glViewport(0, 0, 800, 800);
+    glViewport(0, 0, width, height);
     std::cout << "GLAD loaded successfully, OpenGL version: " << glGetString(GL_VERSION) << std::endl;
     // Create shader program using the shader class
     Shader shaderProgram("resources/shaders/default.vert", "resources/shaders/default.frag");
@@ -75,30 +122,85 @@ int main () {
     VBO1.Unbind();
     EBO1.Unbind();
 
-    // Gets ID of uniform called "scale" from the shader program
-    GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
 
-    Texture texture("resources/textures/pop_cat.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+    // Create shader for light source
+    Shader lightShader("resources/shaders/light.vert", "resources/shaders/light.frag");
+
+    // Generate and bind a Vertex Array Object for the light source
+    VAO lightVAO;
+    lightVAO.Bind();
+
+    // Generate and bind a Vertex Buffer Object for the light source, and send the vertex data to the GPU
+    VBO lightVBO(lightVertices, sizeof(lightVertices));
+    EBO lightEBO(lightIndices, sizeof(lightIndices));
+
+    // Link the VBO to the VAO with the layout
+    lightVAO.LinkAttrib(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+
+    // Unbind all to prevent accidentally modifying them
+    lightVAO.Unbind();
+    lightVBO.Unbind();
+    lightEBO.Unbind();
 
 
-    std::cout << "VAO, VBO and EBO created and linked successfully, starting rendering..." << std::endl;
+    // Create transformations for the light source and the pyramid
+    glm::vec3 lightPos(0.5f, 0.5f, 0.5f);
+    glm::mat4 lightModel = glm::mat4(1.0f);
+    lightModel = glm::translate(lightModel, lightPos);
+
+    // Pyramid transformations
+    glm::vec3 pyramidPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::mat4 pyramidModel = glm::mat4(1.0f);
+    pyramidModel = glm::translate(pyramidModel, pyramidPos);
+
+    // Send the transformations to the respective shaders
+    lightShader.Activate();
+    glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
+    shaderProgram.Activate();
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(pyramidModel));
+
+
+
+
+
+    // Create texture
+    Texture brick("resources/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    // Enable depth testing for correct 3D rendering
+    glEnable(GL_DEPTH_TEST);
+
+    Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
+
+
     // Main loop, where everything from input, logic changes and rendering happens
     while(!glfwWindowShouldClose(window))
     {
         // Specify the color of the background
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-        // Clean the back buffer and assign the new color to it
-        glClear(GL_COLOR_BUFFER_BIT);
-        // Tell OpenGL which Shader Program we want to use
+        // Clean the back buffer and depth buffer
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+ 
+
+        camera.Inputs(window);
+        camera.updateMatrix(45.0f, 0.1f, 100.0f);
+
+
+        // Activate the shader before setting uniforms/drawing objects
         shaderProgram.Activate();
-        // Assign a value for the uniform; NOTE: Must always be done after activating the Shader Program
-        glUniform1f(uniID, 0.5f);
-        texture.Bind();
+        camera.Matrix(shaderProgram, "camMatrix");
+        // Bind the texture
+        brick.Bind();
         // Bind the VAO so OpenGL knows to use it
         VAO1.Bind();
         // Draw primitives, number of indices, datatype of indices, index of indices
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0);
+
+        lightShader.Activate();
+        camera.Matrix(lightShader, "camMatrix");
+        lightVAO.Bind();
+        glDrawElements(GL_TRIANGLES, sizeof(lightIndices)/sizeof(int), GL_UNSIGNED_INT, 0);
+
         // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
         // Take care of all GLFW events
@@ -108,7 +210,7 @@ int main () {
     VAO1.Delete();
     VBO1.Delete();
     EBO1.Delete();
-    texture.Delete();
+    brick.Delete();
     shaderProgram.Delete();
     // Loop ended, quit
     glfwDestroyWindow(window);

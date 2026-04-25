@@ -2,6 +2,7 @@
 
 Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, GLenum pixelType)
 {
+    // Assign the type of the texture to the class member
     type = texType;
 
     // Load the image
