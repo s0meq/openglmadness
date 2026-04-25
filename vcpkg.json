@@ -1,0 +1,8 @@
+{
+  "name": "openglmadness",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "glfw3",
+    "opengl"
+  ]
+}

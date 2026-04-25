@@ -6,9 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 
-include_directories(headers)
-include_directories(external/include)
-
 set(SOURCES
     src/main.cpp
     src/glad.c
@@ -19,6 +16,8 @@ set(SOURCES
 )
 
 add_executable(MyGame ${SOURCES})
+
+target_include_directories(MyGame PRIVATE headers external/include)
 
 # Link the libraries
 target_link_libraries(MyGame 
